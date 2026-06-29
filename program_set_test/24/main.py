@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-量子线路映射模块  - 队伍 24
-
+量子线路映射模块 - 队伍 24
 
 仅使用 Python 标准库。
 """
@@ -64,12 +63,10 @@ def _bfs_path(adj, src, dst):
     return path
 
 
-
 #  第二部分：check_eq 兼容的执行模型
 
 
 def _find_executable(gates, log_to_phy, edge_set, num_q):
-    
     qubits_ocpy = [False] * num_q
     for i, (l0, l1) in enumerate(gates):
         if not False in qubits_ocpy:
@@ -87,12 +84,10 @@ def _find_executable(gates, log_to_phy, edge_set, num_q):
     return -1
 
 
-
 #  第三部分：SWAP 选择策略
 
 
 def _scan_executable(gates, log_to_phy, edge_set, num_q):
-   
     qubits_ocpy = [False] * num_q
     for i, (l0, l1) in enumerate(gates):
         if all(qubits_ocpy):
@@ -110,7 +105,6 @@ def _scan_executable(gates, log_to_phy, edge_set, num_q):
 
 
 def _distance_cost(gates, log_to_phy, dist, num_q, lookahead):
-   
     cost = 0.0
     weight = 1.0
     for i, (l0, l1) in enumerate(gates):
@@ -124,7 +118,6 @@ def _distance_cost(gates, log_to_phy, dist, num_q, lookahead):
 
 
 def _select_swap_size(gates, log_to_phy, phy_to_log, adj, edge_set, dist, num_q):
-  
     G = len(gates)
     lookahead = min(20, max(6, G // 2))
 
@@ -163,7 +156,6 @@ def _select_swap_size(gates, log_to_phy, phy_to_log, adj, edge_set, dist, num_q)
 
 def _select_swap_depth(gates, log_to_phy, phy_to_log, adj, dist, num_q,
                        qubit_depth):
-   
     G = len(gates)
     lookahead = min(30, max(12, G // 2))
     depth_weight = 0.3
@@ -186,9 +178,7 @@ def _select_swap_depth(gates, log_to_phy, phy_to_log, adj, dist, num_q,
             if l1 < num_q:
                 new_log[l1] = p0
 
-            # 加权距离代价
             dist_cost = _distance_cost(gates, new_log, dist, num_q, lookahead)
-            # 深度惩罚
             score = dist_cost + depth_weight * (qubit_depth[p0] + qubit_depth[p1])
 
             if score < best_score:
@@ -218,7 +208,6 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
         if it > max_iter:
             break
 
-        
         exec_idx = _find_executable(gates, log_to_phy, edge_set, num_q)
 
         if exec_idx >= 0:
@@ -229,7 +218,6 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
                 qubit_depth[p0] = qubit_depth[p1] = d
             continue
 
-        
         if qubit_depth is not None:
             best_swap = _select_swap_depth(
                 gates, log_to_phy, phy_to_log, adj, dist, num_q, qubit_depth)
@@ -237,7 +225,6 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
             best_swap = _select_swap_size(
                 gates, log_to_phy, phy_to_log, adj, edge_set, dist, num_q)
 
-        
         if best_swap is None:
             l0, l1 = gates[0]
             p0 = log_to_phy[l0] if l0 < num_q else l0
@@ -247,7 +234,6 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
                 if len(path) >= 2:
                     best_swap = (path[0], path[1])
 
-      
         if best_swap is None:
             for p in range(num_q):
                 if adj[p]:
@@ -260,7 +246,6 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
         s0, s1 = best_swap
         swaps_out.append(best_swap)
 
-      
         l0, l1 = phy_to_log[s0], phy_to_log[s1]
         phy_to_log[s0], phy_to_log[s1] = l1, l0
         if l0 < num_q:
@@ -276,7 +261,7 @@ def _run_mapping(gates_in, adj, edge_set, dist, num_q, use_depth):
 
 
 
-#  第五部分：后处理 —— SWAP 化简
+#  第五部分：后处理 
 
 
 def _internal_check_eq(cnot_list, connectivity, swaps):
@@ -284,22 +269,19 @@ def _internal_check_eq(cnot_list, connectivity, swaps):
     gate_list = list(cnot_list)
     swaps_copy = list(swaps)
 
-    
     edge_set = set()
     all_q = set()
     for a, b in connectivity:
-        edge_set.add((a, b))
-        edge_set.add((b, a))
-        all_q.add(a)
-        all_q.add(b)
+        edge_set.add((a, b)); edge_set.add((b, a))
+        all_q.add(a); all_q.add(b)
     num_q = max(all_q) + 1
 
-   
     for s0, s1 in swaps_copy:
         if (s0, s1) not in edge_set:
             return False
 
     phy_to_log = list(range(num_q))
+    log_to_phy = list(range(num_q))  # O(1) reverse lookup
 
     while gate_list:
         qubits_ocpy = [False] * num_q
@@ -308,8 +290,8 @@ def _internal_check_eq(cnot_list, connectivity, swaps):
             if all(qubits_ocpy):
                 break
             if (not qubits_ocpy[q0]) and (not qubits_ocpy[q1]):
-                q_phy0 = phy_to_log.index(q0)
-                q_phy1 = phy_to_log.index(q1)
+                q_phy0 = log_to_phy[q0]  # O(1) instead of index()
+                q_phy1 = log_to_phy[q1]
                 if (q_phy0, q_phy1) in edge_set:
                     exe_idx = i
                     break
@@ -324,38 +306,37 @@ def _internal_check_eq(cnot_list, connectivity, swaps):
             s0, s1 = swaps_copy.pop(0)
             q0, q1 = phy_to_log[s0], phy_to_log[s1]
             phy_to_log[s0], phy_to_log[s1] = q1, q0
+            log_to_phy[q0] = s1
+            log_to_phy[q1] = s0
 
     return True
 
 
 def _internal_get_depth(cnot_list, connectivity, swaps):
-    
+   
     gate_list = list(cnot_list)
     swaps_copy = list(swaps)
 
-    # 构建边集
     edge_set = set()
     all_q = set()
     for a, b in connectivity:
-        edge_set.add((a, b))
-        edge_set.add((b, a))
-        all_q.add(a)
-        all_q.add(b)
+        edge_set.add((a, b)); edge_set.add((b, a))
+        all_q.add(a); all_q.add(b)
     num_q = max(all_q) + 1
 
     qbt_depth = [0] * num_q
     phy_to_log = list(range(num_q))
+    log_to_phy = list(range(num_q))
 
     while gate_list:
-        
         qubits_ocpy = [False] * num_q
         exe_idx = -1
         for i, (q0, q1) in enumerate(gate_list):
             if all(qubits_ocpy):
                 break
             if (not qubits_ocpy[q0]) and (not qubits_ocpy[q1]):
-                q_phy0 = phy_to_log.index(q0)
-                q_phy1 = phy_to_log.index(q1)
+                q_phy0 = log_to_phy[q0]
+                q_phy1 = log_to_phy[q1]
                 if (q_phy0, q_phy1) in edge_set:
                     exe_idx = i
                     break
@@ -364,16 +345,18 @@ def _internal_get_depth(cnot_list, connectivity, swaps):
 
         if exe_idx >= 0:
             q0, q1 = gate_list.pop(exe_idx)
-            q0_phy = phy_to_log.index(q0)
-            q1_phy = phy_to_log.index(q1)
+            q0_phy = log_to_phy[q0]
+            q1_phy = log_to_phy[q1]
             depth_nex = max(qbt_depth[q0_phy], qbt_depth[q1_phy]) + 1
             qbt_depth[q0_phy] = qbt_depth[q1_phy] = depth_nex
         else:
             if not swaps_copy:
-                return 10 ** 9  
+                return 10 ** 9
             s0, s1 = swaps_copy.pop(0)
             q0, q1 = phy_to_log[s0], phy_to_log[s1]
             phy_to_log[s0], phy_to_log[s1] = q1, q0
+            log_to_phy[q0] = s1
+            log_to_phy[q1] = s0
             depth_nex = max(qbt_depth[s0], qbt_depth[s1]) + 3
             qbt_depth[s0] = qbt_depth[s1] = depth_nex
 
@@ -385,28 +368,24 @@ def _simplify_swaps(swaps, cnot_list, connectivity, use_depth=False):
     if not swaps:
         return swaps
 
+    if len(swaps) > 600:
+        return swaps
+
     original_depth = None
     if use_depth:
         original_depth = _internal_get_depth(cnot_list, connectivity, swaps)
 
-    for _ in range(10):
-        changed = False
-
-        i = len(swaps) - 1
-        while i >= 0:
-            candidate = swaps[:i] + swaps[i + 1:]
-            if _internal_check_eq(cnot_list, connectivity, candidate):
-                if use_depth:
-                    new_depth = _internal_get_depth(cnot_list, connectivity, candidate)
-                    if new_depth > original_depth:
-                        i -= 1
-                        continue  
-                swaps.pop(i)
-                changed = True
-            i -= 1
-
-        if not changed:
-            break
+    i = len(swaps) - 1
+    while i >= 0:
+        candidate = swaps[:i] + swaps[i + 1:]
+        if _internal_check_eq(cnot_list, connectivity, candidate):
+            if use_depth and original_depth is not None:
+                new_depth = _internal_get_depth(cnot_list, connectivity, candidate)
+                if new_depth > original_depth:
+                    i -= 1
+                    continue
+            swaps.pop(i)
+        i -= 1
 
     return swaps
 
@@ -416,29 +395,15 @@ def _simplify_swaps(swaps, cnot_list, connectivity, use_depth=False):
 
 
 def main_qm(cnot_list, connectivities, obj):
-    """
-    量子线路映射模块主函数。
-
-    参数:
-        cnot_list:     CNOT 门列表 [(逻辑qubit, 逻辑qubit), ...]
-        connectivities: 硬件拓扑连通性 [(物理qubit, 物理qubit), ...]
-        obj:           "size" 优化 SWAP 数量 / "depth" 优化线路深度
-
-    返回:
-        SWAP 门列表 [(物理qubit, 物理qubit), ...]
-    """
     adj, edge_set, num_q = _build_adjacency(connectivities)
     dist = _bfs_distances(adj, num_q)
     use_depth = (obj == "depth")
 
     swaps = _run_mapping(cnot_list, adj, edge_set, dist, num_q, use_depth)
-
-  
     swaps = _simplify_swaps(swaps, cnot_list, connectivities, use_depth)
 
     return swaps
 
 
 def main_cs(full_path):
-    
     return [0.1 + 2j, -2 - 3j]
